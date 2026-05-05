@@ -1,0 +1,29 @@
+{
+  "graduation": {
+    "default_total_credits": 130,
+    "default_major_required_credits": 36,
+    "default_major_elective_credits": 30,
+    "default_general_education_credits": 32,
+    "major_overrides": {
+      "컴퓨터공학": {
+        "total_credits": 130,
+        "major_required_credits": 36,
+        "major_elective_credits": 30,
+        "general_education_credits": 32
+      }
+    }
+  },
+  "leave_of_absence": {
+    "max_leave_count_for_demo": 4,
+    "requires_advisor_check_after_count": 2,
+    "required_documents": ["휴학원", "본인 신분 확인", "지도교수 상담 확인"]
+  },
+  "scholarship": {
+    "required_documents": ["장학금 신청서", "성적 증명서", "소득분위 또는 증빙서류", "개인정보 수집·이용 동의서"],
+    "recommended_gpa_note": "장학 종류별 성적 기준은 다르므로 반드시 해당 공지의 기준을 확인해야 합니다."
+  },
+  "course_correction": {
+    "actions": ["수강정정 기간 확인", "담당교수 또는 학과사무실 문의", "대기/증원 공지 확인", "대체 과목 검토"],
+    "after_deadline_note": "수강정정 기간 이후에는 일반적으로 임의 변경이 제한되므로 담당 부서 확인이 필요합니다."
+  }
+}
