@@ -2,76 +2,110 @@ from __future__ import annotations
 
 import json
 
+import pandas as pd
 import streamlit as st
 
-from src.admin_ai.pipeline import AdminAIAgent
-from src.admin_ai.profile import StudentProfile
+from src.scorepeek.models import ScoreSubmission
+from src.scorepeek.service import ScorePeekService
 
-st.set_page_config(page_title="서강 원스톱 학사·행정 AI", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="ScorePeek", page_icon="📊", layout="wide")
 
-st.title("🎓 서강 원스톱 학사·행정 AI 에이전트")
-st.caption("공지·규정·학사일정 문서를 근거로 개인 상황별 학사·행정 답변과 후속 액션을 생성하는 MVP")
+st.title("📊 ScorePeek: Anonymous Course Score Board")
+st.caption("Verify course access, submit your score anonymously, and see the live median, percentile, and score distribution.")
+
+if "service" not in st.session_state:
+    st.session_state.service = ScorePeekService()
+if "verified_course" not in st.session_state:
+    st.session_state.verified_course = None
+
+service: ScorePeekService = st.session_state.service
+courses = service.list_courses()
+course_labels = {f"{item['course_id']} · {item['title']}": item["course_id"] for item in courses}
 
 with st.sidebar:
-    st.header("학생 프로필")
-    grade = st.number_input("학년", min_value=1, max_value=8, value=4)
-    major = st.text_input("전공", value="컴퓨터공학")
-    completed_credits = st.number_input("총 이수학점", min_value=0, value=118)
-    major_required_credits = st.number_input("전공필수 이수학점", min_value=0, value=30)
-    major_elective_credits = st.number_input("전공선택 이수학점", min_value=0, value=24)
-    general_education_credits = st.number_input("교양 이수학점", min_value=0, value=28)
-    leave_count = st.number_input("휴학 이력", min_value=0, value=1)
-    scholarship_status = st.text_input("장학 상태", value="none")
+    st.header("Course verification")
+    if course_labels:
+        selected_label = st.selectbox("Course", list(course_labels.keys()))
+        course_id = course_labels[selected_label]
+    else:
+        course_id = st.text_input("Course ID")
+    access_key = st.text_input("Course access key", type="password", help="Demo key for the selected course. Replace with SSO/LMS verification in production.")
+    if st.button("Verify course", type="primary"):
+        result = service.verify_course(course_id, access_key)
+        if result.verified:
+            st.session_state.verified_course = result.course
+            st.success("Course verified.")
+        else:
+            st.session_state.verified_course = None
+            st.error(result.message)
 
-question = st.text_area(
-    "질문을 입력하세요",
-    value="컴공 4학년인데 졸업까지 뭐가 남았어?",
-    height=100,
-)
-
-if "agent" not in st.session_state:
-    st.session_state.agent = AdminAIAgent()
-
-if st.button("AI 에이전트 실행", type="primary"):
-    profile = StudentProfile(
-        grade=grade,
-        major=major,
-        completed_credits=completed_credits,
-        major_required_credits=major_required_credits,
-        major_elective_credits=major_elective_credits,
-        general_education_credits=general_education_credits,
-        leave_count=leave_count,
-        scholarship_status=scholarship_status,
+    st.divider()
+    st.header("Anonymous identity")
+    student_private_key = st.text_input(
+        "Private update key",
+        type="password",
+        help="Use the same private key to update your own score. The raw value is never stored.",
     )
-    result = st.session_state.agent.ask(question, profile)
 
-    left, right = st.columns([1.2, 1])
-    with left:
-        st.subheader("답변")
-        st.markdown(result["answer"].replace("\n", "  \n"))
+course = st.session_state.verified_course
 
-        st.subheader("해야 할 일 체크리스트")
-        for item in result["checklist"]:
-            st.checkbox(item, value=False)
+if not course:
+    st.info("Verify your course access first. Demo courses and keys are listed in README.md.")
+    st.stop()
 
-        st.subheader("문의 이메일 초안")
-        st.code(result["email_draft"], language="text")
+left, right = st.columns([0.9, 1.1])
 
-    with right:
-        st.subheader("근거 문서")
-        for ev in result["evidence"]:
-            with st.expander(f"{ev['source']} | chunk {ev['chunk_id']} | score {ev['score']}"):
-                st.write(ev["preview"])
+with left:
+    st.subheader("Submit or update my score")
+    assessment = st.text_input("Assessment", value="midterm")
+    max_score = st.number_input("Max score", min_value=1.0, value=float(course.max_score), step=1.0)
+    score = st.number_input("My score", min_value=0.0, max_value=float(max_score), value=min(80.0, float(max_score)), step=0.5)
 
-        st.subheader("일정 등록용 JSON")
-        st.json(result["calendar_items"])
+    if st.button("Submit anonymously", type="primary"):
+        if not student_private_key:
+            st.error("Enter a private update key first.")
+        else:
+            submission = ScoreSubmission(
+                course_id=course.course_id,
+                assessment=assessment,
+                score=score,
+                max_score=max_score,
+                student_private_key=student_private_key,
+            )
+            result = service.submit_score(submission)
+            st.success("Your score was submitted or updated anonymously.")
+            st.json(result["summary"])
 
-        st.subheader("원본 응답 JSON")
-        st.download_button(
-            "결과 JSON 다운로드",
-            data=json.dumps(result, ensure_ascii=False, indent=2),
-            file_name="admin_ai_result.json",
-            mime="application/json",
+    with st.expander("Privacy model"):
+        st.markdown(
+            """
+- No name or student number is stored directly.
+- Your private update key is converted into a salted hash and used only to update your own score.
+- In production, the demo access key should be replaced with official SSO/LMS enrollment verification.
+            """.strip()
         )
-else:
-    st.info("왼쪽 프로필과 질문을 조정한 뒤 AI 에이전트 실행 버튼을 누르세요.")
+
+with right:
+    st.subheader("Live class distribution")
+    report = service.report(course.course_id, assessment, student_private_key or None)
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Submissions", report.count)
+    m2.metric("Mean", "-" if report.mean is None else f"{report.mean:.2f}")
+    m3.metric("Median", "-" if report.median is None else f"{report.median:.2f}")
+    m4.metric("My rank", "-" if report.my_estimated_rank is None else f"{report.my_estimated_rank}/{report.count}")
+
+    st.caption(report.message)
+    histogram_df = pd.DataFrame([item.model_dump() for item in report.histogram])
+    if not histogram_df.empty:
+        st.bar_chart(histogram_df, x="label", y="count")
+
+    if report.my_percentile is not None:
+        st.success(f"Your score is at approximately the {report.my_percentile:.2f} percentile among submitted anonymous scores.")
+
+    st.download_button(
+        "Download report JSON",
+        data=json.dumps(report.model_dump(), ensure_ascii=False, indent=2),
+        file_name="scorepeek_report.json",
+        mime="application/json",
+    )
