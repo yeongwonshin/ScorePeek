@@ -1,0 +1,22 @@
+{
+  "courses": [
+    {
+      "course_id": "CSE101-2026S",
+      "title": "Introduction to Computer Science",
+      "instructor": "Demo Instructor",
+      "semester": "2026 Spring",
+      "access_key_hash": "e037a2d3fc2fcf2155e0c90372648c5fe09e4296797d53416c229e0750936e90",
+      "max_score": 100,
+      "min_anonymous_count": 1
+    },
+    {
+      "course_id": "MATH201-2026S",
+      "title": "Linear Algebra",
+      "instructor": "Demo Instructor",
+      "semester": "2026 Spring",
+      "access_key_hash": "666c33685e1401e1b4fa661a7e88a1014c97dce76f706fd0298d34aafd8ceea8",
+      "max_score": 100,
+      "min_anonymous_count": 1
+    }
+  ]
+}
