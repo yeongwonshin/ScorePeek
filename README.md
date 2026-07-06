@@ -186,22 +186,3 @@ The application returns a live class distribution summary:
 pytest -q
 ```
 
-## What Changed from the Previous Repository Concept
-
-The previous repository was an academic administration AI agent. This version intentionally removes that concept and keeps only the useful application skeleton: Streamlit UI, FastAPI API, Pydantic models, tests, and a service pipeline.
-
-Removed or replaced areas:
-
-- Academic document RAG
-- Graduation and scholarship rule engine
-- Calendar generation
-- Admin email draft generation
-- Sample university policy documents
-
-New areas:
-
-- Course verification
-- Anonymous score storage
-- Score statistics
-- Distribution histogram
-- Percentile and estimated rank calculation
